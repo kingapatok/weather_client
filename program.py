@@ -1,23 +1,72 @@
+import collections
+import requests
 
+Location = collections.namedtuple("Location", "city state country")
+Weather = collections.namedtuple("Weather", "location units temp condition")
 
 
 def main():
-    # Show the header
     show_header()
+    location_text = location_request()
+    loc = convert_plaintext_location(location_text)
+    if not loc:
+        print(f"Could not find anything about {location_text}.")
+    weather = call_weather_api(loc)
+    if not weather:
+        print(f"Could not get weather for  {location_text} from the API.")
+    report_weather(loc, weather)
 
-    # Get the location request
+
+def location_request():
     location_text = input("Where do yuo want to weather report (e.g. Portland, US)? ")
     print(f"You selected {location_text}")
+    return location_text
 
-    # Convert plaintext over to data we can use ---- czemu zwraca none
-    location = convert_plaintext_location(location_text)
-    print(f"Location = {location}")
 
-    # Get report from the API
-    # Report the weather
-    print('-----------------------')
-    print('Hello from weather main')
-    print('-----------------------')
+def report_weather(loc, weather):
+    location_name = get_location_name(loc)
+    scale = get_scale(weather)
+    print(f"The weather in {location_name} is {weather.temp} {scale} and {weather.condition}.")
+
+
+def get_scale(weather):
+    if weather.units == "imperial":
+        scale = "F"
+    else:
+        scale = "C"
+    return scale
+
+
+def get_location_name(location):
+    if not location.state:
+        return f"{location.city.capitalize()}, {location.country.upper()}"
+    else:
+        return f"{location.city.capitalize()},{location.state.upper()}, {location.country.upper()}"
+
+def call_weather_api(loc):
+    url = f"https://weather.talkpython.fm/api/weather?city={loc.city}&country={loc.country}&units=imperial"
+    if loc.state:
+        url += f"&state={loc.state}"
+
+    # print(f"Would call {url}")
+    resp = requests.get(url)
+    if resp.status_code in {400, 404, 500}:
+        print(f"Error: {resp.text}.")
+        return None
+
+    data = resp.json()
+
+    return convert_api_to_weater(data, loc)
+
+
+def convert_api_to_weater(data, loc):
+    # 'weather': {'description': 'overcast clouds', 'category': 'Clouds'}
+    # 'forecast': {'temp': 62.33,
+    temp = data.get("forecast").get("temp")
+    w = data.get("weather")
+    condition = f"{w.get('category')}: {w.get('description').capitalize()}"
+    weather = Weather(loc, data.get('units'), temp, condition)
+    return weather
 
 
 def convert_plaintext_location(location_text):
@@ -26,7 +75,31 @@ def convert_plaintext_location(location_text):
 
     location_text = location_text.lower().strip()
     parts = location_text.split(',')
-    print(parts)
+
+    city = ""
+    state = ""
+    country = "US"
+    if len(parts) == 1:
+        city = parts[0].strip()
+    elif len(parts) == 2:
+        city = parts[0].strip()
+        country = parts[1].strip()
+    elif len(parts) == 3:
+        city = parts[0].strip()
+        state = parts[1].strip()
+        country = parts[2].strip()
+    else:
+        return None
+
+    # print(f"City={city}, State={state}, Country={country}")
+
+    # t = city, state, country
+    # t[0]
+    # t2 = Location(city, state, country)
+    # t2.city
+
+    # return city, state, country
+    return Location(city, state, country)
 
 
 def show_header():
