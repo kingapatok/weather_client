@@ -11,9 +11,11 @@ def main():
     loc = convert_plaintext_location(location_text)
     if not loc:
         print(f"Could not find anything about {location_text}.")
+        return
     weather = call_weather_api(loc)
     if not weather:
         print(f"Could not get weather for  {location_text} from the API.")
+        return
     report_weather(loc, weather)
 
 
@@ -42,6 +44,7 @@ def get_location_name(location):
         return f"{location.city.capitalize()}, {location.country.upper()}"
     else:
         return f"{location.city.capitalize()},{location.state.upper()}, {location.country.upper()}"
+
 
 def call_weather_api(loc):
     url = f"https://weather.talkpython.fm/api/weather?city={loc.city}&country={loc.country}&units=imperial"
